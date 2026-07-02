@@ -35,7 +35,7 @@ export function hasClientOrServerDirective(
  * returns the statement node so the directive can be pointed at (and removed).
  */
 export function findUseClientDirective(
-  body: readonly TSESTree.ProgramStatement[],
+  body: ReadonlyArray<TSESTree.ProgramStatement>,
 ): TSESTree.ExpressionStatement | null {
   for (const statement of body) {
     if (
