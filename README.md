@@ -1,11 +1,11 @@
 # eslint-plugin-use-client
 
 An ESLint rule that enforces the [`'use client'`](https://react.dev/reference/rsc/use-client)
-directive in files that use client-only React features — so React Server
+directive in files that use client-only React features so that React Server
 Components consumers (Next.js App Router, etc.) don't hit runtime errors from
 missing directives.
 
-Unlike the existing plugins, this one:
+Unlike other plugins, this one:
 
 - **Runs on flat-config ESLint 9/10** (uses the modern `context.sourceCode` API,
   not the removed `context.getSourceCode()`/`getScope()`/`getFilename()`).
@@ -101,20 +101,7 @@ pnpm lint
 pnpm check:exports
 ```
 
-## Releasing
-
-Releases use GitHub-Release-triggered **npm trusted publishing (OIDC)** — no npm
-token is stored anywhere.
-
-1. Run `pnpm release` (needs the `gh` CLI, authenticated). It runs the gates,
-   bumps the version, tags, pushes, and creates a GitHub Release.
-2. The published Release triggers `.github/workflows/publish.yml`, which publishes
-   to npm via OIDC with automatic provenance.
-
-**One-time setup** (before the first automated publish): on npmjs.com, add this
-repo's `publish.yml` workflow as a **trusted publisher** for the package. The very
-first publish may need to be done manually (`npm publish --access public`) to
-create the package on npm before trusted publishing can be configured.
+Releasing is documented separately in [PUBLISHING.md](./PUBLISHING.md).
 
 ## License
 
