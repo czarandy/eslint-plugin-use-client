@@ -54,14 +54,14 @@ Reports a file that uses a client-only React feature but is missing the
 
 ### What it detects
 
-| Feature | Example |
-| --- | --- |
-| Hooks (`use[A-Z]`) | `useState(...)`, `useEffect(...)`, `useTheme(...)` |
-| React 19 `use()` | `use(SomeContext)` |
-| Member-call hooks | `React.useState(...)` |
-| `createContext` | `createContext(null)`, `React.createContext(null)` |
-| Browser globals | `window.*`, `document.*`, `navigator.*`, `localStorage.*`, `sessionStorage.*` |
-| JSX event handlers | `<button onClick={...} />` |
+| Feature            | Example                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| Hooks (`use[A-Z]`) | `useState(...)`, `useEffect(...)`, `useTheme(...)`                            |
+| React 19 `use()`   | `use(SomeContext)`                                                            |
+| Member-call hooks  | `React.useState(...)`                                                         |
+| `createContext`    | `createContext(null)`, `React.createContext(null)`                            |
+| Browser globals    | `window.*`, `document.*`, `navigator.*`, `localStorage.*`, `sessionStorage.*` |
+| JSX event handlers | `<button onClick={...} />`                                                    |
 
 ### Options
 

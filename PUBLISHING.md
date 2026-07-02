@@ -55,7 +55,7 @@ Node 22.)
 
 On [npmjs.com](https://www.npmjs.com/), add this repo's `publish.yml` workflow as a
 **trusted publisher** for the `eslint-plugin-use-client` package
-(package settings → *Publishing access* / *Trusted Publisher*).
+(package settings → _Publishing access_ / _Trusted Publisher_).
 
 Trusted publishing can only be configured on a package that already exists on npm,
 so the **very first** publish may need to be done manually to create it:

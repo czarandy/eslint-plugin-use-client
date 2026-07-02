@@ -8,7 +8,7 @@ import type {TSESLint, TSESTree} from '@typescript-eslint/utils';
  * stop at the first non-directive statement.
  */
 export function hasClientOrServerDirective(
-  body: readonly TSESTree.ProgramStatement[],
+  body: ReadonlyArray<TSESTree.ProgramStatement>,
 ): boolean {
   for (const statement of body) {
     if (
@@ -33,7 +33,7 @@ export function hasClientOrServerDirective(
  * top of the file, but *after* any shebang and any leading comment block.
  *
  * `'use client'` still becomes the first statement (a directive), while leading
- * license headers and `/* eslint-disable *​/` directives keep their original
+ * license headers and `eslint-disable` block comments keep their original
  * line positions. Inserting *above* a leading comment would displace it — which
  * silently breaks file-level `eslint-disable` comments that suppress rules
  * anchored to line 1.

@@ -5,9 +5,7 @@ import {requireUseClient} from '../src/rules/require-use-client.js';
 
 // eslint's RuleTester expects its own RuleModule shape; the rule is authored
 // with typescript-eslint's RuleCreator, which is runtime-compatible.
-const rule = requireUseClient as unknown as Parameters<
-  RuleTester['run']
->[1];
+const rule = requireUseClient as unknown as Parameters<RuleTester['run']>[1];
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -89,7 +87,8 @@ ruleTester.run('require-use-client', rule, {
       name: 'hook inside a component',
       code: 'function Counter(){const [c,setC]=useState(0);return c;}',
       filename: 'Counter.tsx',
-      output: directive + 'function Counter(){const [c,setC]=useState(0);return c;}',
+      output:
+        directive + 'function Counter(){const [c,setC]=useState(0);return c;}',
       errors: [{messageId: 'missingUseClient', data: {feature: 'useState'}}],
     },
     {
@@ -126,7 +125,9 @@ ruleTester.run('require-use-client', rule, {
       name: 'createContext (default on)',
       code: 'export const Ctx = createContext(null);',
       output: directive + 'export const Ctx = createContext(null);',
-      errors: [{messageId: 'missingUseClient', data: {feature: 'createContext'}}],
+      errors: [
+        {messageId: 'missingUseClient', data: {feature: 'createContext'}},
+      ],
     },
     {
       name: 'React.createContext',
@@ -134,7 +135,9 @@ ruleTester.run('require-use-client', rule, {
       output:
         directive +
         "import React from 'react';\nexport const Ctx = React.createContext(null);",
-      errors: [{messageId: 'missingUseClient', data: {feature: 'createContext'}}],
+      errors: [
+        {messageId: 'missingUseClient', data: {feature: 'createContext'}},
+      ],
     },
     {
       name: 'additionalHooks matches a non-use-prefixed hook',

@@ -67,6 +67,10 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     },
   },
   create(context) {
+    // context.options is typed as a fixed tuple, but at runtime ESLint passes
+    // an empty array when the rule is configured without options, so options[0]
+    // can be undefined despite the type. The `?? {}` fallback is required.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const options = context.options[0] ?? {};
     const checkHooks = options.hooks ?? true;
     const checkCreateContext = options.createContext ?? true;
@@ -91,9 +95,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
 
     /** Record the first offending node; later detectors become no-ops. */
     function record(node: TSESTree.Node, feature: string): void {
-      if (firstTrigger === null) {
-        firstTrigger = {node, feature};
-      }
+      firstTrigger ??= {node, feature};
     }
 
     /** Classify a callee name as a hook/createContext trigger, or null. */
@@ -110,7 +112,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
         if (/^use[A-Z]/.test(name)) {
           return name;
         }
-        if (additionalHooks && additionalHooks.test(name)) {
+        if (additionalHooks?.test(name)) {
           return name;
         }
       }
@@ -188,7 +190,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
           node: trigger.node,
           messageId: 'missingUseClient',
           data: {feature: trigger.feature},
-          fix: (fixer) => insertUseClientFix(fixer, sourceCode),
+          fix: fixer => insertUseClientFix(fixer, sourceCode),
         });
       },
     };

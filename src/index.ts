@@ -1,5 +1,7 @@
 import {requireUseClient} from './rules/require-use-client.js';
 
+const configs: Record<string, unknown> = {};
+
 const plugin = {
   meta: {
     name: 'eslint-plugin-use-client',
@@ -8,7 +10,7 @@ const plugin = {
   rules: {
     'require-use-client': requireUseClient,
   },
-  configs: {} as Record<string, unknown>,
+  configs,
 };
 
 // Flat-config preset. Referenced after `plugin` is defined so it can point back
