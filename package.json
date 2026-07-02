@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-use-client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ESLint rule that enforces the 'use client' directive in files using client-only React features (hooks, use(), createContext, browser APIs, event handlers).",
   "keywords": [
     "eslint",
