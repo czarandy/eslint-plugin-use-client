@@ -91,17 +91,11 @@ Reports a file that uses a client-only React feature but is missing the
   Disable with `createContext: false` or exempt via `allowedHooks` if needed.
 - Computed member calls (`React['useState']()`) are out of scope.
 
-## Development
+## Contributing
 
-```bash
-pnpm install
-pnpm test        # RuleTester suite
-pnpm build       # tsup (JS) + tsc (declarations)
-pnpm lint
-pnpm check:exports
-```
-
-Releasing is documented separately in [PUBLISHING.md](./PUBLISHING.md).
+Development setup and workflow are documented in
+[CONTRIBUTING.md](./CONTRIBUTING.md); releasing is documented in
+[PUBLISHING.md](./PUBLISHING.md).
 
 ## License
 
