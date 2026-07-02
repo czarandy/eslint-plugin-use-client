@@ -175,6 +175,27 @@ ruleTester.run('require-use-client', rule, {
       errors: [{messageId: 'missingUseClient', data: {feature: 'useState'}}],
     },
     {
+      name: 'leading eslint-disable comment: directive goes below it (not above)',
+      code: '/* eslint-disable no-console */\nconst s = useState(0);\n',
+      output:
+        "/* eslint-disable no-console */\n'use client';\nconst s = useState(0);\n",
+      errors: [{messageId: 'missingUseClient', data: {feature: 'useState'}}],
+    },
+    {
+      name: 'leading line-comment block: directive goes below it',
+      code: '// Copyright\n// header\nconst s = useState(0);\n',
+      output:
+        "// Copyright\n// header\n'use client';\nconst s = useState(0);\n",
+      errors: [{messageId: 'missingUseClient', data: {feature: 'useState'}}],
+    },
+    {
+      name: 'shebang + leading comment: directive goes below both',
+      code: '#!/usr/bin/env node\n/* header */\nconst s = useState(0);\n',
+      output:
+        "#!/usr/bin/env node\n/* header */\n'use client';\nconst s = useState(0);\n",
+      errors: [{messageId: 'missingUseClient', data: {feature: 'useState'}}],
+    },
+    {
       name: 'report anchors on the offending node, not the whole file',
       code: 'function C() {\n  const t = useTheme();\n  return t;\n}',
       filename: 'C.tsx',
