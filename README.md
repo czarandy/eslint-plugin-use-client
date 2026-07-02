@@ -84,18 +84,12 @@ Reports a file that uses a client-only React feature but is missing the
   name, for hook-like calls that don't follow the `use[A-Z]` convention
   (e.g. `'^atom$'`).
 
-### Known trade-offs (v1)
+### Known limitations
 
 - `createContext` is matched by callee **name**, not by verifying it's imported
   from `react` — this is deliberate, so re-exported/namespaced usage isn't missed.
   Disable with `createContext: false` or exempt via `allowedHooks` if needed.
 - Computed member calls (`React['useState']()`) are out of scope.
-
-## Contributing
-
-Development setup and workflow are documented in
-[CONTRIBUTING.md](./CONTRIBUTING.md); releasing is documented in
-[PUBLISHING.md](./PUBLISHING.md).
 
 ## License
 
