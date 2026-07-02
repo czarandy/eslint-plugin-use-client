@@ -29,6 +29,57 @@ export function hasClientOrServerDirective(
 }
 
 /**
+ * Return the `'use client'` prologue directive statement if one is present, or
+ * `null`. Unlike {@link hasClientOrServerDirective} this ignores `'use server'`:
+ * an unnecessary-directive check must key on `'use client'` specifically, and it
+ * returns the statement node so the directive can be pointed at (and removed).
+ */
+export function findUseClientDirective(
+  body: readonly TSESTree.ProgramStatement[],
+): TSESTree.ExpressionStatement | null {
+  for (const statement of body) {
+    if (
+      statement.type !== 'ExpressionStatement' ||
+      typeof statement.directive !== 'string'
+    ) {
+      // Prologue ended at the first non-directive statement.
+      return null;
+    }
+    if (statement.directive === 'use client') {
+      return statement;
+    }
+  }
+  return null;
+}
+
+/**
+ * Remove a `'use client'` directive statement along with the whitespace on its
+ * line, so the line disappears cleanly. This backs the removal *suggestion* for
+ * an unnecessary directive; it is intentionally NOT an auto-fix, because the
+ * detectors can't see every reason a file might legitimately be a client
+ * boundary (e.g. it renders an imported client-only component).
+ *
+ * The directive statement's range includes its trailing `;`; we then consume the
+ * rest of that line plus any following blank lines. Prologue directives and the
+ * statements after them all sit at column 0, so this never eats another
+ * statement's indentation.
+ */
+export function removeUseClientFix(
+  fixer: TSESLint.RuleFixer,
+  sourceCode: Readonly<TSESLint.SourceCode>,
+  statement: TSESTree.ExpressionStatement,
+): TSESLint.RuleFix {
+  const text = sourceCode.getText();
+  const start = statement.range[0];
+  let end = statement.range[1];
+  const trailing = /^[ \t]*\r?\n(?:[ \t]*\r?\n)*/.exec(text.slice(end));
+  if (trailing) {
+    end += trailing[0].length;
+  }
+  return fixer.removeRange([start, end]);
+}
+
+/**
  * The shared auto-fixer used by every detector: insert `'use client';` at the
  * top of the file, but *after* any shebang and any leading comment block.
  *

@@ -2,11 +2,16 @@ import type {TSESLint, TSESTree} from '@typescript-eslint/utils';
 
 import {getCalleeName} from '../util/callee.js';
 import {
+  findUseClientDirective,
   hasClientOrServerDirective,
   insertUseClientFix,
+  removeUseClientFix,
 } from '../util/directive.js';
 
-export type MessageIds = 'missingUseClient';
+export type MessageIds =
+  | 'missingUseClient'
+  | 'unnecessaryUseClient'
+  | 'removeUseClient';
 
 export type Options = [
   {
@@ -14,6 +19,7 @@ export type Options = [
     createContext?: boolean;
     browserApis?: boolean | string[];
     eventHandlers?: boolean;
+    removeUnnecessary?: boolean;
     allowedHooks?: string[];
     additionalHooks?: string;
   },
@@ -35,9 +41,10 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     type: 'problem',
     docs: {
       description:
-        "Require a top-of-file 'use client' directive in files that use client-only React features (hooks, use(), createContext, browser APIs, or event handlers).",
+        "Require a top-of-file 'use client' directive in files that use client-only React features (hooks, use(), createContext, browser APIs, or event handlers), and flag a 'use client' directive in files that use none of them.",
     },
     fixable: 'code',
+    hasSuggestions: true,
     schema: [
       {
         type: 'object',
@@ -51,6 +58,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
             ],
           },
           eventHandlers: {type: 'boolean'},
+          removeUnnecessary: {type: 'boolean'},
           allowedHooks: {
             type: 'array',
             items: {type: 'string'},
@@ -64,6 +72,9 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     messages: {
       missingUseClient:
         'This file uses the client-only React feature "{{feature}}" but is missing the "\'use client\'" directive. Add it to the top of the file.',
+      unnecessaryUseClient:
+        'This file has a "\'use client\'" directive but does not use any client-only React feature. Remove it so the module can render on the server.',
+      removeUseClient: "Remove the unnecessary 'use client' directive.",
     },
   },
   create(context) {
@@ -75,6 +86,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     const checkHooks = options.hooks ?? true;
     const checkCreateContext = options.createContext ?? true;
     const checkEventHandlers = options.eventHandlers ?? true;
+    const checkUnnecessary = options.removeUnnecessary ?? true;
     const allowedHooks = new Set(options.allowedHooks ?? []);
     const additionalHooks = options.additionalHooks
       ? new RegExp(options.additionalHooks)
@@ -91,6 +103,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     const sourceCode = context.sourceCode;
 
     let hasDirective = false;
+    let useClientNode: TSESTree.ExpressionStatement | null = null;
     let firstTrigger: Trigger | null = null;
 
     /** Record the first offending node; later detectors become no-ops. */
@@ -139,10 +152,16 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     return {
       Program(node): void {
         hasDirective = hasClientOrServerDirective(node.body);
+        useClientNode = findUseClientDirective(node.body);
       },
 
+      // NOTE: the detectors keep scanning even when a directive is present. The
+      // missing-directive report is suppressed at `Program:exit` when
+      // `hasDirective` is set, but the unnecessary-directive report needs to know
+      // whether *any* client feature was used — so `firstTrigger` must be
+      // populated regardless. Detection still stops after the first trigger.
       CallExpression(node): void {
-        if (hasDirective || firstTrigger) {
+        if (firstTrigger) {
           return;
         }
         const feature = classifyCall(getCalleeName(node.callee));
@@ -152,7 +171,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
       },
 
       MemberExpression(node): void {
-        if (hasDirective || firstTrigger || !checkBrowserApis) {
+        if (firstTrigger || !checkBrowserApis) {
           return;
         }
         const {object} = node;
@@ -166,7 +185,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
       },
 
       JSXAttribute(node): void {
-        if (hasDirective || firstTrigger || !checkEventHandlers) {
+        if (firstTrigger || !checkEventHandlers) {
           return;
         }
         if (
@@ -179,7 +198,28 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
       },
 
       'Program:exit'(): void {
-        if (hasDirective || firstTrigger === null) {
+        if (hasDirective) {
+          // The file already opts into a directive. If it's a `'use client'`
+          // that no client-only feature justifies, flag it as unnecessary (and
+          // offer removal as a suggestion, not an auto-fix — see
+          // `removeUseClientFix`).
+          if (checkUnnecessary && useClientNode && firstTrigger === null) {
+            const directiveNode: TSESTree.ExpressionStatement = useClientNode;
+            context.report({
+              node: directiveNode,
+              messageId: 'unnecessaryUseClient',
+              suggest: [
+                {
+                  messageId: 'removeUseClient',
+                  fix: (fixer) =>
+                    removeUseClientFix(fixer, sourceCode, directiveNode),
+                },
+              ],
+            });
+          }
+          return;
+        }
+        if (firstTrigger === null) {
           return;
         }
         const trigger: Trigger = firstTrigger;

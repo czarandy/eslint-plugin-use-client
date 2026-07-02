@@ -52,6 +52,15 @@ Reports a file that uses a client-only React feature but is missing the
 `'use client'` directive, and (with `--fix`) inserts it. A file that already has
 `'use client'` or `'use server'` is left alone.
 
+It also flags the **reverse** case (on by default): a file that carries a
+`'use client'` directive but uses *none* of the client-only features below, so
+the directive is dead weight and the module could render on the server. Removal
+is offered as an editor **suggestion** rather than an auto-fix — the rule can't
+see every reason a file might legitimately be a client boundary (e.g. it renders
+an imported client component), so it never strips the directive on `--fix`.
+Disable this half with `removeUnnecessary: false`. `'use server'` files are
+never flagged.
+
 ### What it detects
 
 | Feature            | Example                                                                       |
@@ -71,11 +80,14 @@ Reports a file that uses a client-only React feature but is missing the
   createContext: true,    // detect createContext(...) (default true)
   browserApis: true,      // detect browser globals; pass an array to override the set
   eventHandlers: true,    // detect JSX on* handlers (default true)
+  removeUnnecessary: true, // flag a 'use client' with no client feature (default true)
   allowedHooks: [],       // exact callee names to treat as server-safe
   additionalHooks: '',    // regex (source string) for hook-like names not matching /^use[A-Z]/
 }]
 ```
 
+- **`removeUnnecessary`** — set to `false` to stop reporting a `'use client'`
+  directive that no detected client feature justifies.
 - **`allowedHooks`** — exempt a callable that looks like a hook but is
   server-safe, e.g. `allowedHooks: ['useMemoizedConstant']`.
 - **`browserApis`** — set to `false` to disable, or pass an array

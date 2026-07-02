@@ -81,6 +81,38 @@ ruleTester.run('require-use-client', rule, {
       options: [{eventHandlers: false}],
       filename: 'x.tsx',
     },
+    // --- unnecessary 'use client' detection (default on) ---
+    {
+      name: 'use client is justified by a hook',
+      code: "'use client';\nexport function useDialog(){const [o]=useState(false);return o;}",
+    },
+    {
+      name: 'use client is justified by a browser API',
+      code: "'use client';\nexport const w = window.innerWidth;",
+    },
+    {
+      name: 'use client is justified by a JSX handler',
+      code: "'use client';\nexport const x = <button onClick={fn} />;",
+      filename: 'x.tsx',
+    },
+    {
+      name: 'use server with no client feature is left alone',
+      code: "'use server';\nexport async function action(){return null;}",
+    },
+    {
+      name: 'unnecessary detection disabled leaves a bare use client alone',
+      code: "'use client';\nexport function Page(){return null;}",
+      options: [{removeUnnecessary: false}],
+      filename: 'Page.tsx',
+    },
+    {
+      name: 'use client justified only when its detector is enabled',
+      // hooks disabled -> useState is not a client feature, so the directive
+      // would be unnecessary; but unnecessary detection is also off here.
+      code: "'use client';\nfunction C(){const [x]=useState(0);return x;}",
+      options: [{hooks: false, removeUnnecessary: false}],
+      filename: 'C.tsx',
+    },
   ],
   invalid: [
     {
@@ -221,6 +253,89 @@ ruleTester.run('require-use-client', rule, {
         directive +
         'function C(){useEffect(()=>{});return <button onClick={fn} />;}',
       errors: [{messageId: 'missingUseClient', data: {feature: 'useEffect'}}],
+    },
+    // --- unnecessary 'use client' detection (default on) ---
+    {
+      name: 'bare use client on a plain server component',
+      code: "'use client';\nexport function Page(){return null;}",
+      // Reported, but NOT auto-fixed: removal is offered only as a suggestion.
+      output: null,
+      errors: [
+        {
+          messageId: 'unnecessaryUseClient',
+          line: 1,
+          column: 1,
+          suggestions: [
+            {
+              messageId: 'removeUseClient',
+              output: 'export function Page(){return null;}',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'lowercase useful() does not justify use client',
+      code: "'use client';\nexport const y = useful();",
+      output: null,
+      errors: [
+        {
+          messageId: 'unnecessaryUseClient',
+          suggestions: [
+            {
+              messageId: 'removeUseClient',
+              output: 'export const y = useful();',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'use client kept below a blank line is removed cleanly',
+      code: "'use client';\n\nexport const n = 1;\n",
+      output: null,
+      errors: [
+        {
+          messageId: 'unnecessaryUseClient',
+          suggestions: [
+            {messageId: 'removeUseClient', output: 'export const n = 1;\n'},
+          ],
+        },
+      ],
+    },
+    {
+      name: 'unnecessary use client below a leading comment keeps the comment',
+      code: "// Copyright\n'use client';\nexport const n = 1;\n",
+      output: null,
+      errors: [
+        {
+          messageId: 'unnecessaryUseClient',
+          suggestions: [
+            {
+              messageId: 'removeUseClient',
+              output: '// Copyright\nexport const n = 1;\n',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'disabling a detector makes an otherwise-justified use client unnecessary',
+      code: "'use client';\nfunction C(){const [x]=useState(0);return x;}",
+      options: [{hooks: false}],
+      filename: 'C.tsx',
+      output: null,
+      errors: [
+        {
+          messageId: 'unnecessaryUseClient',
+          suggestions: [
+            {
+              messageId: 'removeUseClient',
+              output: 'function C(){const [x]=useState(0);return x;}',
+            },
+          ],
+        },
+      ],
     },
   ],
 });
