@@ -256,15 +256,20 @@ ruleTester.run('require-use-client', rule, {
     },
     // --- unnecessary 'use client' detection (default on) ---
     {
-      name: 'bare use client on a plain server component',
+      name: 'bare use client on a plain server component (anchored on the directive, not the whole file)',
       code: "'use client';\nexport function Page(){return null;}",
       // Reported, but NOT auto-fixed: removal is offered only as a suggestion.
       output: null,
       errors: [
         {
           messageId: 'unnecessaryUseClient',
+          // The report must span ONLY the `'use client';` statement (line 1,
+          // cols 1-13), not the whole file. If it were anchored on the Program
+          // node, endLine would be 2 — this asserts against that regression.
           line: 1,
           column: 1,
+          endLine: 1,
+          endColumn: 14,
           suggestions: [
             {
               messageId: 'removeUseClient',
