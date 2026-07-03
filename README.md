@@ -5,13 +5,11 @@ directive in files that use client-only React features so that React Server
 Components consumers (Next.js App Router, etc.) don't hit runtime errors from
 missing directives.
 
-Unlike other plugins, this one:
+Improvements compared to other similar plugins:
 
-- **Runs on flat-config ESLint 9/10** (uses the modern `context.sourceCode` API,
-  not the removed `context.getSourceCode()`/`getScope()`/`getFilename()`).
-- **Is scope-agnostic** — it flags hooks used inside components, inside custom
-  `useXxx` hooks, and at module scope. Plugins that only look inside PascalCase
-  components miss standalone hook and context files.
+- **Runs on flat-config ESLint 9/10** - doesn't use deprecated APIs that require older eslint versions.
+- **Scope-agnostic** — it flags hooks used inside components, inside custom
+  `useXxx` hooks, and at module scope. 
 - **Detects `createContext`**, `use()` (React 19), `React.useX()`, browser globals,
   and JSX event handlers.
 - **Reports precisely** — the error points at the offending call/attribute, not
@@ -25,7 +23,7 @@ npm install -D eslint-plugin-use-client
 # or: pnpm add -D eslint-plugin-use-client
 ```
 
-Requires ESLint `>= 9`.
+Requires ESLint `>= 9` (also compatible with 10).
 
 ## Usage (flat config)
 
