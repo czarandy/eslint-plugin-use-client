@@ -10,6 +10,7 @@ import {
 
 export type MessageIds =
   | 'missingUseClient'
+  | 'missingUseClientModule'
   | 'unnecessaryUseClient'
   | 'removeUseClient';
 
@@ -22,6 +23,7 @@ export type Options = [
     removeUnnecessary?: boolean;
     allowedHooks?: string[];
     additionalHooks?: string;
+    clientOnlyModules?: string[];
   },
 ];
 
@@ -33,7 +35,11 @@ const DEFAULT_BROWSER_APIS = [
   'sessionStorage',
 ];
 
-type Trigger = {node: TSESTree.Node; feature: string};
+type Trigger = {
+  node: TSESTree.Node;
+  feature: string;
+  messageId: 'missingUseClient' | 'missingUseClientModule';
+};
 
 export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
   defaultOptions: [{}],
@@ -65,6 +71,11 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
             uniqueItems: true,
           },
           additionalHooks: {type: 'string'},
+          clientOnlyModules: {
+            type: 'array',
+            items: {type: 'string'},
+            uniqueItems: true,
+          },
         },
         additionalProperties: false,
       },
@@ -72,6 +83,8 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     messages: {
       missingUseClient:
         'This file uses the client-only React feature "{{feature}}" but is missing the "\'use client\'" directive. Add it to the top of the file.',
+      missingUseClientModule:
+        'This file imports the client-only module "{{feature}}" but is missing the "\'use client\'" directive. Add it to the top of the file.',
       unnecessaryUseClient:
         'This file has a "\'use client\'" directive but does not use any client-only React feature. Remove it so the module can render on the server.',
       removeUseClient: "Remove the unnecessary 'use client' directive.",
@@ -91,6 +104,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     const additionalHooks = options.additionalHooks
       ? new RegExp(options.additionalHooks)
       : null;
+    const clientOnlyModules = options.clientOnlyModules ?? [];
 
     const browserApisOption = options.browserApis ?? true;
     const checkBrowserApis = browserApisOption !== false;
@@ -107,8 +121,56 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
     let firstTrigger: Trigger | null = null;
 
     /** Record the first offending node; later detectors become no-ops. */
-    function record(node: TSESTree.Node, feature: string): void {
-      firstTrigger ??= {node, feature};
+    function record(
+      node: TSESTree.Node,
+      feature: string,
+      messageId: Trigger['messageId'] = 'missingUseClient',
+    ): void {
+      firstTrigger ??= {node, feature, messageId};
+    }
+
+    /**
+     * If `source` names one of the configured `clientOnlyModules`, return the
+     * matching pattern, else `null`. A pattern matches its own bare specifier
+     * and any subpath (`framer-motion` matches `framer-motion/dom`), so listing
+     * a package covers its deep imports too.
+     */
+    function matchClientOnlyModule(source: string): string | null {
+      for (const module of clientOnlyModules) {
+        if (source === module || source.startsWith(`${module}/`)) {
+          return module;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Flag a static `import`/`export ... from` of a client-only module. Skips
+     * type-only imports/re-exports — they pull no runtime code and so create no
+     * client boundary.
+     */
+    function checkModuleSource(
+      node:
+        | TSESTree.ImportDeclaration
+        | TSESTree.ExportAllDeclaration
+        | TSESTree.ExportNamedDeclaration,
+    ): void {
+      if (firstTrigger || clientOnlyModules.length === 0) {
+        return;
+      }
+      const kind =
+        node.type === 'ImportDeclaration' ? node.importKind : node.exportKind;
+      if (kind === 'type') {
+        return;
+      }
+      const {source} = node;
+      if (source === null || typeof source.value !== 'string') {
+        return;
+      }
+      const matched = matchClientOnlyModule(source.value);
+      if (matched) {
+        record(source, matched, 'missingUseClientModule');
+      }
     }
 
     /** Classify a callee name as a hook/createContext trigger, or null. */
@@ -160,6 +222,18 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
       // `hasDirective` is set, but the unnecessary-directive report needs to know
       // whether *any* client feature was used — so `firstTrigger` must be
       // populated regardless. Detection still stops after the first trigger.
+      ImportDeclaration(node): void {
+        checkModuleSource(node);
+      },
+
+      ExportAllDeclaration(node): void {
+        checkModuleSource(node);
+      },
+
+      ExportNamedDeclaration(node): void {
+        checkModuleSource(node);
+      },
+
       CallExpression(node): void {
         if (firstTrigger) {
           return;
@@ -211,7 +285,7 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
               suggest: [
                 {
                   messageId: 'removeUseClient',
-                  fix: (fixer) =>
+                  fix: fixer =>
                     removeUseClientFix(fixer, sourceCode, directiveNode),
                 },
               ],
@@ -224,11 +298,11 @@ export const requireUseClient: TSESLint.RuleModule<MessageIds, Options> = {
         }
         const trigger: Trigger = firstTrigger;
         context.report({
-          // Anchor on the offending node (the call/member/attribute), NOT the
-          // Program node, so the editor squiggle points at the violating code
-          // instead of the whole file.
+          // Anchor on the offending node (the call/member/attribute/import),
+          // NOT the Program node, so the editor squiggle points at the violating
+          // code instead of the whole file.
           node: trigger.node,
-          messageId: 'missingUseClient',
+          messageId: trigger.messageId,
           data: {feature: trigger.feature},
           fix: fixer => insertUseClientFix(fixer, sourceCode),
         });
