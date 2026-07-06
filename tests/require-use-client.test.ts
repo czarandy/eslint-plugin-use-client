@@ -113,6 +113,37 @@ ruleTester.run('require-use-client', rule, {
       options: [{hooks: false, removeUnnecessary: false}],
       filename: 'C.tsx',
     },
+    // --- clientOnlyModules ---
+    {
+      name: 'use client justified by importing a client-only module',
+      code: "'use client';\nimport {motion} from 'framer-motion';\nexport const x = motion.div;",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
+    {
+      name: 'use client justified by a subpath of a client-only module',
+      code: "'use client';\nimport {m} from 'framer-motion/dom';\nexport const x = m;",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
+    {
+      name: 'use client justified by re-exporting a client-only module',
+      code: "'use client';\nexport * from 'framer-motion';",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
+    {
+      name: 'importing a non-listed module does not require use client',
+      code: "import {clsx} from 'clsx';\nexport const x = clsx('a');",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
+    {
+      name: 'type-only import of a client-only module does not require use client',
+      code: "import type {MotionProps} from 'framer-motion';\nexport const x: MotionProps | null = null;",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
+    {
+      name: 'a listed prefix does not match an unrelated same-prefix package',
+      code: "import x from 'framer-motion-utils';\nexport const y = x;",
+      options: [{clientOnlyModules: ['framer-motion']}],
+    },
   ],
   invalid: [
     {
@@ -340,6 +371,34 @@ ruleTester.run('require-use-client', rule, {
             },
           ],
         },
+      ],
+    },
+    // --- clientOnlyModules ---
+    {
+      name: 'importing a client-only module requires use client (report anchored on the import source)',
+      code: "import {motion} from 'framer-motion';\nexport const x = motion.div;",
+      options: [{clientOnlyModules: ['framer-motion']}],
+      output:
+        directive +
+        "import {motion} from 'framer-motion';\nexport const x = motion.div;",
+      errors: [
+        {
+          messageId: 'missingUseClientModule',
+          data: {feature: 'framer-motion'},
+          // Anchored on the `'framer-motion'` source string, not the whole file.
+          line: 1,
+          column: 22,
+          endColumn: 37,
+        },
+      ],
+    },
+    {
+      name: 're-exporting a client-only module requires use client',
+      code: "export * from 'framer-motion';",
+      options: [{clientOnlyModules: ['framer-motion']}],
+      output: directive + "export * from 'framer-motion';",
+      errors: [
+        {messageId: 'missingUseClientModule', data: {feature: 'framer-motion'}},
       ],
     },
   ],

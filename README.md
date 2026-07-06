@@ -9,7 +9,7 @@ Improvements compared to other similar plugins:
 
 - **Runs on flat-config ESLint 9/10** - doesn't use deprecated APIs that require older eslint versions.
 - **Scope-agnostic** — it flags hooks used inside components, inside custom
-  `useXxx` hooks, and at module scope. 
+  `useXxx` hooks, and at module scope.
 - **Detects `createContext`**, `use()` (React 19), `React.useX()`, browser globals,
   and JSX event handlers.
 - **Reports precisely** — the error points at the offending call/attribute, not
@@ -51,7 +51,7 @@ Reports a file that uses a client-only React feature but is missing the
 `'use client'` or `'use server'` is left alone.
 
 It also flags the **reverse** case (on by default): a file that carries a
-`'use client'` directive but uses *none* of the client-only features below, so
+`'use client'` directive but uses _none_ of the client-only features below, so
 the directive is dead weight and the module could render on the server. Removal
 is offered as an editor **suggestion** rather than an auto-fix — the rule can't
 see every reason a file might legitimately be a client boundary (e.g. it renders
@@ -61,14 +61,15 @@ never flagged.
 
 ### What it detects
 
-| Feature            | Example                                                                       |
-| ------------------ | ----------------------------------------------------------------------------- |
-| Hooks (`use[A-Z]`) | `useState(...)`, `useEffect(...)`, `useTheme(...)`                            |
-| React 19 `use()`   | `use(SomeContext)`                                                            |
-| Member-call hooks  | `React.useState(...)`                                                         |
-| `createContext`    | `createContext(null)`, `React.createContext(null)`                            |
-| Browser globals    | `window.*`, `document.*`, `navigator.*`, `localStorage.*`, `sessionStorage.*` |
-| JSX event handlers | `<button onClick={...} />`                                                    |
+| Feature             | Example                                                                       |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Hooks (`use[A-Z]`)  | `useState(...)`, `useEffect(...)`, `useTheme(...)`                            |
+| React 19 `use()`    | `use(SomeContext)`                                                            |
+| Member-call hooks   | `React.useState(...)`                                                         |
+| `createContext`     | `createContext(null)`, `React.createContext(null)`                            |
+| Browser globals     | `window.*`, `document.*`, `navigator.*`, `localStorage.*`, `sessionStorage.*` |
+| JSX event handlers  | `<button onClick={...} />`                                                    |
+| Client-only imports | `import ... from 'framer-motion'` (via `clientOnlyModules`, off by default)   |
 
 ### Options
 
@@ -81,6 +82,7 @@ never flagged.
   removeUnnecessary: true, // flag a 'use client' with no client feature (default true)
   allowedHooks: [],       // exact callee names to treat as server-safe
   additionalHooks: '',    // regex (source string) for hook-like names not matching /^use[A-Z]/
+  clientOnlyModules: [],  // modules whose import forces a client boundary
 }]
 ```
 
@@ -93,6 +95,20 @@ never flagged.
 - **`additionalHooks`** — a regex source string matched against the simple callee
   name, for hook-like calls that don't follow the `use[A-Z]` convention
   (e.g. `'^atom$'`).
+- **`clientOnlyModules`** — package specifiers whose mere import forces a client
+  boundary, even when the file uses no client-only feature of its own. Some
+  libraries (e.g. `framer-motion`, which re-exports with `export *`) can't be
+  pulled into a server module, so importing them requires `'use client'`.
+  Listing such a module makes an import of it (or any subpath — `framer-motion`
+  covers `framer-motion/dom`) both **require** the directive and **suppress** the
+  unnecessary-directive report. Type-only imports (`import type ...`) are ignored,
+  since they pull no runtime code.
+
+  ```js
+  'use-client/require-use-client': ['error', {
+    clientOnlyModules: ['framer-motion'],
+  }]
+  ```
 
 ### Known limitations
 
